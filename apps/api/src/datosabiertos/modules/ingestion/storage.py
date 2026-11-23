@@ -32,6 +32,8 @@ class StorageBackend(Protocol):
 
     async def read_bytes(self, key: str) -> bytes: ...
 
+    async def delete(self, key: str) -> None: ...
+
 
 def build_raw_key(
     *,
@@ -97,6 +99,10 @@ class LocalFileSystemStorage:
     async def read_bytes(self, key: str) -> bytes:
         return self._resolve(key).read_bytes()
 
+    async def delete(self, key: str) -> None:
+        with contextlib.suppress(FileNotFoundError):
+            self._resolve(key).unlink()
+
 
 class InMemoryStorage:
     """Storage double used by tests."""
@@ -118,6 +124,9 @@ class InMemoryStorage:
             return self.objects[key]
         except KeyError as exc:  # pragma: no cover - defensive
             raise FileNotFoundError(key) from exc
+
+    async def delete(self, key: str) -> None:
+        self.objects.pop(key, None)
 
 
 __all__ = [

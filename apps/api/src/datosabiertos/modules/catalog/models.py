@@ -35,7 +35,7 @@ class Dataset(UuidPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "dataset"
 
     source_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("data_source.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("data_source.id", ondelete="RESTRICT"), nullable=False
     )
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organization.id", ondelete="SET NULL"), nullable=True
@@ -55,6 +55,7 @@ class Dataset(UuidPrimaryKeyMixin, TimestampMixin, Base):
     last_successful_sync: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     landing_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
 
     # Accent-free, lower-cased projection of title/description/organization used
@@ -70,9 +71,7 @@ class Dataset(UuidPrimaryKeyMixin, TimestampMixin, Base):
 
     source: Mapped[DataSource] = relationship(back_populates="datasets")
     organization: Mapped[Organization | None] = relationship(back_populates="datasets")
-    resources: Mapped[list[DatasetResource]] = relationship(
-        back_populates="dataset", cascade="all, delete-orphan"
-    )
+    resources: Mapped[list[DatasetResource]] = relationship(back_populates="dataset")
     changes: Mapped[list[DataChange]] = relationship(back_populates="dataset")
 
     __table_args__ = (
@@ -82,6 +81,7 @@ class Dataset(UuidPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_dataset_topic", "topic"),
         Index("ix_dataset_last_source_update", "last_source_update"),
         Index("ix_dataset_metadata_hash", "metadata_hash"),
+        Index("ix_dataset_removed_at", "removed_at"),
         Index("ix_dataset_search_text", "search_text"),
         # Trigram indexes are created in the Alembic migration (needs pg_trgm).
     )
@@ -93,7 +93,7 @@ class DatasetResource(UuidPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "dataset_resource"
 
     dataset_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("dataset.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("dataset.id", ondelete="RESTRICT"), nullable=False
     )
     external_id: Mapped[str] = mapped_column(String(128), nullable=False)
     name: Mapped[str | None] = mapped_column(String(512), nullable=True)
@@ -106,6 +106,7 @@ class DatasetResource(UuidPrimaryKeyMixin, TimestampMixin, Base):
     is_available: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     dataset: Mapped[Dataset] = relationship(back_populates="resources")
     snapshots: Mapped[list[ResourceSnapshot]] = relationship(back_populates="resource")
@@ -118,4 +119,5 @@ class DatasetResource(UuidPrimaryKeyMixin, TimestampMixin, Base):
         ),
         Index("ix_dataset_resource_format", "format"),
         Index("ix_dataset_resource_dataset_id", "dataset_id"),
+        Index("ix_dataset_resource_removed_at", "removed_at"),
     )

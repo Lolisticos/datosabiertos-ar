@@ -40,7 +40,7 @@ class TransformationRun(UuidPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "transformation_run"
 
     snapshot_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("resource_snapshot.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("resource_snapshot.id", ondelete="RESTRICT"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     version: Mapped[str] = mapped_column(String(64), nullable=False)

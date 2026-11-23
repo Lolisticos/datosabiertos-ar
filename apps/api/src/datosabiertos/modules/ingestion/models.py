@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
@@ -50,7 +51,7 @@ class IngestionRun(UuidPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "ingestion_run"
 
     source_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("data_source.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("data_source.id", ondelete="RESTRICT"), nullable=False
     )
     dataset_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("dataset.id", ondelete="SET NULL"), nullable=True
@@ -78,6 +79,7 @@ class IngestionRun(UuidPrimaryKeyMixin, TimestampMixin, Base):
     )
     triggered_by: Mapped[str] = mapped_column(String(64), nullable=False, default="cli")
     transformation_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    schema_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -132,16 +134,17 @@ class ResourceSnapshot(UuidPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     source_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("data_source.id", ondelete="CASCADE"), nullable=True
+        ForeignKey("data_source.id", ondelete="RESTRICT"), nullable=True
     )
     resource_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("dataset_resource.id", ondelete="CASCADE"), nullable=True
+        ForeignKey("dataset_resource.id", ondelete="RESTRICT"), nullable=True
     )
     ingestion_run_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("ingestion_run.id", ondelete="SET NULL"), nullable=True
     )
 
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    normalized_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     storage_key: Mapped[str] = mapped_column(String(512), nullable=False)
     media_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
     file_size: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
@@ -174,6 +177,13 @@ class ResourceSnapshot(UuidPrimaryKeyMixin, TimestampMixin, Base):
         ),
         Index("ix_resource_snapshot_fetched_at", "fetched_at"),
         Index("ix_resource_snapshot_content_hash", "content_hash"),
+        Index("ix_resource_snapshot_normalized_hash", "normalized_hash"),
+        Index("uq_resource_snapshot_storage_key", "storage_key", unique=True),
+        CheckConstraint(
+            "(kind = 'catalog_payload' AND source_id IS NOT NULL AND resource_id IS NULL) "
+            "OR (kind = 'resource_file' AND source_id IS NULL AND resource_id IS NOT NULL)",
+            name="ck_resource_snapshot_owner",
+        ),
     )
 
 

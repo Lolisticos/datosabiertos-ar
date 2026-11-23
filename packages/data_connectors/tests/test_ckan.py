@@ -107,7 +107,8 @@ async def test_fetch_returns_bytes_and_a_content_hash(make_client: Any) -> None:
     body = b"jurisdiccion,periodo,valor\nAR-C,2024,10\n"
 
     async def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.host == "datos.gob.ar"
+        assert request.url.host == "200.16.116.5"
+        assert request.headers["host"] == "datos.gob.ar"
         return httpx.Response(200, content=body, headers={"content-type": "text/csv"})
 
     resource = SourceResource(

@@ -28,6 +28,9 @@ class ChangeType(StrEnum):
     METADATA_CHANGED = "metadata_changed"
     FETCH_FAILED = "fetch_failed"
     RECOVERED = "recovered"
+    RESOURCE_UNAVAILABLE = "resource_unavailable"
+    RESOURCE_RECOVERED = "resource_recovered"
+    METHODOLOGY_CHANGED = "methodology_changed"
 
 
 class DataChange(UuidPrimaryKeyMixin, Base):
@@ -39,10 +42,10 @@ class DataChange(UuidPrimaryKeyMixin, Base):
         ForeignKey("ingestion_run.id", ondelete="SET NULL"), nullable=True
     )
     dataset_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("dataset.id", ondelete="CASCADE"), nullable=True
+        ForeignKey("dataset.id", ondelete="SET NULL"), nullable=True
     )
     resource_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("dataset_resource.id", ondelete="CASCADE"), nullable=True
+        ForeignKey("dataset_resource.id", ondelete="SET NULL"), nullable=True
     )
     previous_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("resource_snapshot.id", ondelete="SET NULL"), nullable=True

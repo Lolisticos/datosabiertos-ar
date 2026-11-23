@@ -72,7 +72,7 @@ class IndicatorObservation(UuidPrimaryKeyMixin, Base):
     __tablename__ = "indicator_observation"
 
     indicator_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("indicator.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("indicator.id", ondelete="RESTRICT"), nullable=False
     )
     jurisdiction_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("jurisdiction.id", ondelete="RESTRICT"), nullable=True

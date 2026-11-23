@@ -133,3 +133,19 @@ async def test_gzipped_responses_are_decoded_once(make_client: Any) -> None:
     )
     assert payload.raw == body
     assert payload.payload["success"] is True
+
+
+async def test_connection_is_pinned_to_the_validated_address(make_client: Any) -> None:
+    seen: list[tuple[str, str, str]] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.host, request.headers["host"], request.url.query.decode()))
+        return httpx.Response(200, json={"success": True, "result": {}})
+
+    payload = await make_client(handler).get_json(
+        "https://datos.gob.ar/api/3/action/package_search?existing=1",
+        params={"rows": 10},
+    )
+
+    assert seen == [("200.16.116.5", "datos.gob.ar", "existing=1&rows=10")]
+    assert payload.url == "https://datos.gob.ar/api/3/action/package_search?existing=1&rows=10"

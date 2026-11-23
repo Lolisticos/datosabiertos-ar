@@ -29,7 +29,7 @@ from .errors import (
     UpstreamStatusError,
     UpstreamTransportError,
 )
-from .ssrf import validate_outbound_url
+from .ssrf import ResolvedOutboundUrl, resolve_outbound_url
 
 logger = structlog.get_logger(__name__)
 
@@ -171,9 +171,9 @@ class SafeHttpClient:
             fetched_at=datetime.now(UTC),
         )
 
-    async def _validate(self, url: str) -> str:
+    async def _validate(self, url: str) -> ResolvedOutboundUrl:
         # A resolver can be injected so tests never depend on real DNS.
-        return await validate_outbound_url(
+        return await resolve_outbound_url(
             url,
             allowed_hosts=self._allowed_hosts,
             allow_http=self._policy.allow_http,
@@ -212,11 +212,12 @@ class SafeHttpClient:
     ) -> httpx.Response:
         current = url
         for hop in range(self._policy.max_redirects + 1):
-            current = await self._validate(current)
-            host = httpx.URL(current).host
+            validated = await self._validate(current)
+            current = validated.url
+            host = validated.host
             await self._rate_limiter.acquire(host)
             query = params if hop == 0 else None
-            response = await self._stream(current, params=query)
+            response = await self._stream(validated, params=query)
             if response.status_code in _REDIRECT_STATUSES:
                 location = response.headers.get("location")
                 if not location:
@@ -233,12 +234,29 @@ class SafeHttpClient:
 
     async def _stream(
         self,
-        url: str,
+        validated: ResolvedOutboundUrl,
         *,
         params: Mapping[str, str | int | float | bool] | None = None,
     ) -> httpx.Response:
-        request = self._client.build_request("GET", url, params=params)
-        response = await self._client.send(request, stream=True)
+        original_url = httpx.URL(validated.url)
+        if params:
+            merged_query: list[tuple[str, str | int | float | bool | None]] = list(
+                httpx.QueryParams(original_url.query).multi_items()
+            )
+            merged_query.extend(httpx.QueryParams(params).multi_items())
+            encoded_query = str(httpx.QueryParams(merged_query)).encode("ascii")
+            original_url = original_url.copy_with(query=encoded_query)
+        original_request = self._client.build_request("GET", original_url)
+        # Connect to the exact address approved above. The original hostname is
+        # retained for HTTP Host and TLS SNI/certificate verification.
+        pinned_url = original_request.url.copy_with(host=validated.addresses[0])
+        pinned_request = httpx.Request(
+            "GET",
+            pinned_url,
+            headers=original_request.headers,
+            extensions={**original_request.extensions, "sni_hostname": validated.host},
+        )
+        response = await self._client.send(pinned_request, stream=True)
         try:
             declared = response.headers.get("content-length")
             if (
@@ -267,7 +285,7 @@ class SafeHttpClient:
             status_code=response.status_code,
             headers=headers,
             content=b"".join(chunks),
-            request=request,
+            request=original_request,
         )
 
 

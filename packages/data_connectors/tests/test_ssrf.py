@@ -22,6 +22,7 @@ from .conftest import public_resolver
         "::1",
         "fe80::1",
         "fd00::1",
+        "::ffff:8.8.8.8",
     ],
 )
 def test_private_and_reserved_addresses_are_blocked(address: str) -> None:
@@ -94,4 +95,63 @@ async def test_hostname_resolving_to_a_private_address_is_rejected() -> None:
             "https://datos.gob.ar/api",
             allowed_hosts=["datos.gob.ar"],
             resolver=private_resolver,
+        )
+
+
+async def test_private_ip_literal_is_rejected_without_dns() -> None:
+    with pytest.raises(UnsafeUrlError, match="blocked address"):
+        await validate_outbound_url(
+            "https://127.0.0.1/admin",
+            allowed_hosts=["127.0.0.1"],
+        )
+
+
+async def test_every_dns_answer_must_be_public() -> None:
+    async def mixed_resolver(_host: str, _port: int) -> list[str]:
+        return ["200.16.116.5", "10.0.0.8"]
+
+    with pytest.raises(UnsafeUrlError, match="blocked address"):
+        await validate_outbound_url(
+            "https://datos.gob.ar/api",
+            allowed_hosts=["datos.gob.ar"],
+            resolver=mixed_resolver,
+        )
+
+
+async def test_empty_and_invalid_dns_answers_are_rejected() -> None:
+    async def empty_resolver(_host: str, _port: int) -> list[str]:
+        return []
+
+    with pytest.raises(UnsafeUrlError, match="without usable addresses"):
+        await validate_outbound_url(
+            "https://datos.gob.ar/api",
+            allowed_hosts=["datos.gob.ar"],
+            resolver=empty_resolver,
+        )
+
+
+async def test_query_is_preserved_and_fragment_is_rejected() -> None:
+    assert (
+        await validate_outbound_url(
+            "https://datos.gob.ar/api?rows=10&sort=name%20asc",
+            allowed_hosts=["datos.gob.ar"],
+            resolver=public_resolver,
+        )
+        == "https://datos.gob.ar/api?rows=10&sort=name%20asc"
+    )
+    with pytest.raises(UnsafeUrlError, match="fragments"):
+        await validate_outbound_url(
+            "https://datos.gob.ar/api#internal",
+            allowed_hosts=["datos.gob.ar"],
+            resolver=public_resolver,
+        )
+
+
+async def test_http_cannot_use_the_https_port() -> None:
+    with pytest.raises(UnsafeUrlError, match="standard port"):
+        await validate_outbound_url(
+            "http://datos.gob.ar:443/api",
+            allowed_hosts=["datos.gob.ar"],
+            allow_http=True,
+            resolver=public_resolver,
         )
