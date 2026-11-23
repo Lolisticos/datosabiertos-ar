@@ -1,0 +1,5 @@
+[tool.uv.workspace]
+members = ["apps/api", "packages/data_connectors"]
+
+[tool.uv]
+link-mode = "copy"

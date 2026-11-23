@@ -1,0 +1,11 @@
+# Local build and tooling output. package-lock.json is intentionally NOT
+# ignored: the Docker build runs `npm ci` and needs it committed.
+node_modules/
+.next/
+out/
+build/
+next-env.d.ts
+playwright-report/
+test-results/
+*.tsbuildinfo
+.DS_Store

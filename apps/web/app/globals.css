@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* Own visual identity: warm paper background, deep green ink and accent
+   (no third-party brand assets). Dense, data-first, high contrast. */
+@theme {
+  --color-paper: #f6f5f0;
+  --color-ink: #17231d;
+  --color-muted: #51645a;
+  --color-line: #dbd9cd;
+  --color-accent: #0b6b4f;
+  --color-accent-deep: #06402f;
+  --color-accent-soft: #e2efe8;
+  --color-warn: #92400e;
+  --color-danger: #b42318;
+  --color-info: #1d4ed8;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Visible keyboard focus everywhere. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
