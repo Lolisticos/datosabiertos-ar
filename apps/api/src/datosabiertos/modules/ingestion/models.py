@@ -43,6 +43,7 @@ class IngestionRunStatus(StrEnum):
 class IngestionRunType(StrEnum):
     CATALOG_DISCOVERY = "catalog_discovery"
     RESOURCE_FETCH = "resource_fetch"
+    STATISTICAL_SERIES = "statistical_series"
 
 
 class IngestionRun(UuidPrimaryKeyMixin, TimestampMixin, Base):

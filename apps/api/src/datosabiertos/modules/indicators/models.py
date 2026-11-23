@@ -35,6 +35,7 @@ from ...db.base import Base, TimestampMixin, UuidPrimaryKeyMixin
 if TYPE_CHECKING:
     from ..ingestion.models import ResourceSnapshot
     from ..jurisdictions.models import Jurisdiction
+    from ..provenance.models import TransformationRun
     from ..sources.models import DataSource
 
 
@@ -54,6 +55,11 @@ class Indicator(UuidPrimaryKeyMixin, TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     unit: Mapped[str] = mapped_column(String(64), nullable=False)
     methodology: Mapped[str | None] = mapped_column(Text, nullable=True)
+    frequency: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    source_series_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    methodology_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    license: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("data_source.id", ondelete="SET NULL"), nullable=True
     )
@@ -79,13 +85,17 @@ class IndicatorObservation(UuidPrimaryKeyMixin, Base):
     )
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
     period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
-    value: Mapped[Any] = mapped_column(Numeric(24, 6), nullable=False)
+    value: Mapped[Any | None] = mapped_column(Numeric(24, 12), nullable=True)
     unit: Mapped[str] = mapped_column(String(64), nullable=False)
     dimensions: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     dimension_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     snapshot_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("resource_snapshot.id", ondelete="SET NULL"), nullable=True
     )
+    transformation_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("transformation_run.id", ondelete="RESTRICT"), nullable=True
+    )
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     review_status: Mapped[ObservationReviewStatus] = mapped_column(
         Enum(
             ObservationReviewStatus,
@@ -103,6 +113,7 @@ class IndicatorObservation(UuidPrimaryKeyMixin, Base):
     indicator: Mapped[Indicator] = relationship(back_populates="observations")
     jurisdiction: Mapped[Jurisdiction | None] = relationship()
     snapshot: Mapped[ResourceSnapshot | None] = relationship()
+    transformation_run: Mapped[TransformationRun | None] = relationship()
 
     __table_args__ = (
         UniqueConstraint(
@@ -115,4 +126,5 @@ class IndicatorObservation(UuidPrimaryKeyMixin, Base):
         ),
         Index("ix_indicator_observation_indicator_period", "indicator_id", "period_start"),
         Index("ix_indicator_observation_jurisdiction_id", "jurisdiction_id"),
+        Index("ix_indicator_observation_transformation_run_id", "transformation_run_id"),
     )

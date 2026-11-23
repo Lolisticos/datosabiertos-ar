@@ -15,6 +15,7 @@ from .errors import (
     UpstreamTransportError,
 )
 from .http import HttpPolicy, SafeHttpClient
+from .series_api import SeriesApiConnector, SeriesFetchResult, SeriesMetadata, SeriesObservation
 from .ssrf import validate_outbound_url
 from .types import (
     ConnectorMetadata,
@@ -41,6 +42,10 @@ __all__ = [
     "InvalidPayloadError",
     "RetryableUpstreamError",
     "SafeHttpClient",
+    "SeriesApiConnector",
+    "SeriesFetchResult",
+    "SeriesMetadata",
+    "SeriesObservation",
     "SourceConnector",
     "SourceDataset",
     "SourceOrganization",

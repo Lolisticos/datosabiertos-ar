@@ -170,6 +170,31 @@ async def test_facets_and_explorer_filters(
     assert filters.json()["sources"][0]["slug"] == "test-source"
 
 
+async def test_discovery_dimensions_are_bounded_and_counted(
+    client: AsyncClient, seeded_catalog: dict[str, Any]
+) -> None:
+    organizations = await client.get("/api/v1/organizations", params={"page_size": 1})
+    assert organizations.status_code == 200
+    organization_page = organizations.json()
+    assert organization_page["total"] == 1
+    assert organization_page["items"][0]["dataset_count"] == 2
+    assert organization_page["items"][0]["available_dataset_count"] == 1
+
+    organization_id = organization_page["items"][0]["id"]
+    detail = await client.get(f"/api/v1/organizations/{organization_id}")
+    assert detail.status_code == 200
+    missing = await client.get(f"/api/v1/organizations/{uuid.uuid4()}")
+    assert missing.status_code == 404
+
+    topics = await client.get("/api/v1/topics")
+    assert topics.status_code == 200
+    assert topics.json()["items"] == [{"name": "Educación", "dataset_count": 1}]
+
+    jurisdictions = await client.get("/api/v1/jurisdictions")
+    assert jurisdictions.status_code == 200
+    assert jurisdictions.json()["total"] == 0
+
+
 async def test_stats_overview_counts(client: AsyncClient, seeded_catalog: dict[str, Any]) -> None:
     response = await client.get("/api/v1/stats/overview")
     assert response.status_code == 200

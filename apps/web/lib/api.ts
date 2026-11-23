@@ -11,6 +11,11 @@ import {
   datasetFiltersSchema,
   datasetPageSchema,
   facetsSchema,
+  indicatorCoverageSchema,
+  indicatorDetailSchema,
+  indicatorPageSchema,
+  observationPageSchema,
+  organizationPageSchema,
   runPageSchema,
   runSchema,
   sourcesSchema,
@@ -22,6 +27,12 @@ import {
   type DatasetFilters,
   type DatasetPage,
   type Facets,
+  type IndicatorCoverage,
+  type IndicatorDetail,
+  type IndicatorPage,
+  type Observation,
+  type ObservationPage,
+  type OrganizationPage,
   type RunPage,
   type Run,
   type Source,
@@ -49,10 +60,22 @@ export class ApiFailure extends Error {
   }
 }
 
-async function fetchJson(path: string): Promise<unknown> {
+type FetchPolicy =
+  | { noStore: true; revalidate?: never; tags?: never }
+  | { noStore?: false; revalidate: number; tags?: string[] };
+
+async function fetchJson(
+  path: string,
+  policy: FetchPolicy = { revalidate: 300, tags: ["catalogue"] },
+): Promise<unknown> {
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
+    response = await fetch(
+      `${API_BASE}${path}`,
+      policy.noStore
+        ? { cache: "no-store" }
+        : { next: { revalidate: policy.revalidate, tags: policy.tags } },
+    );
   } catch {
     throw new ApiFailure(
       "network",
@@ -184,13 +207,13 @@ export function getRuns(params: RunSearchParams): Promise<RunPage> {
     page: params.page,
     page_size: params.page_size ?? 10,
   });
-  return fetchJson(`/api/v1/ingestion-runs${query}`).then((payload) =>
+  return fetchJson(`/api/v1/ingestion-runs${query}`, { noStore: true }).then((payload) =>
     parseWith(runPageSchema, payload, "ingestion-runs"),
   );
 }
 
 export function getRun(id: string): Promise<Run> {
-  return fetchJson(`/api/v1/ingestion-runs/${id}`).then((payload) =>
+  return fetchJson(`/api/v1/ingestion-runs/${id}`, { noStore: true }).then((payload) =>
     parseWith(runSchema, payload, `ingestion-runs/${id}`),
   );
 }
@@ -209,35 +232,76 @@ export function getChanges(params: ChangeSearchParams): Promise<ChangePage> {
     page: params.page,
     page_size: params.page_size ?? 10,
   });
-  return fetchJson(`/api/v1/changes${query}`).then((payload) =>
+  return fetchJson(`/api/v1/changes${query}`, { noStore: true }).then((payload) =>
     parseWith(changePageSchema, payload, "changes"),
   );
 }
 
 export type OrganizationOption = { id: string; name: string };
 
-// The API filters datasets by organization UUID but exposes no organization
-// list endpoint (`/api/v1/facets` only returns names). To build a complete,
-// real organism filter we scan every catalogue page (page_size max = 100)
-// and collect the distinct organizations. Fetched in parallel; ~1 MB total.
+function getOrganizations(page: number): Promise<OrganizationPage> {
+  return fetchJson(`/api/v1/organizations?page=${page}&page_size=100`).then(
+    (payload) => parseWith(organizationPageSchema, payload, "organizations"),
+  );
+}
+
+// Fetches the compact organization dimension, never the full dataset catalogue.
 export async function getOrganizationOptions(): Promise<OrganizationOption[]> {
-  const first = await searchDatasets({ page: 1, page_size: 100 });
+  const first = await getOrganizations(1);
   const rest = await Promise.all(
     Array.from({ length: Math.max(0, first.pages - 1) }, (_, index) =>
-      searchDatasets({ page: index + 2, page_size: 100 }),
+      getOrganizations(index + 2),
     ),
   );
-  const byId = new Map<string, string>();
-  for (const page of [first, ...rest]) {
-    for (const item of page.items) {
-      if (item.organization && !byId.has(item.organization.id)) {
-        byId.set(item.organization.id, item.organization.name);
-      }
-    }
-  }
-  return [...byId.entries()]
-    .map(([id, name]) => ({ id, name }))
-    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  return [first, ...rest]
+    .flatMap((page) => page.items)
+    .map(({ id, name }) => ({ id, name }));
+}
+
+const INDICATOR_CACHE: FetchPolicy = { revalidate: 3600, tags: ["indicators"] };
+
+export function getIndicators(page = 1): Promise<IndicatorPage> {
+  return fetchJson(`/api/v1/indicators?page=${page}&page_size=100`, INDICATOR_CACHE).then(
+    (payload) => parseWith(indicatorPageSchema, payload, "indicators"),
+  );
+}
+
+export function getIndicator(code: string): Promise<IndicatorDetail> {
+  return fetchJson(`/api/v1/indicators/${encodeURIComponent(code)}`, INDICATOR_CACHE).then(
+    (payload) => parseWith(indicatorDetailSchema, payload, `indicators/${code}`),
+  );
+}
+
+export function getIndicatorCoverage(code: string): Promise<IndicatorCoverage> {
+  return fetchJson(
+    `/api/v1/indicators/${encodeURIComponent(code)}/coverage`,
+    INDICATOR_CACHE,
+  ).then((payload) =>
+    parseWith(indicatorCoverageSchema, payload, `indicators/${code}/coverage`),
+  );
+}
+
+function getObservationPage(code: string, page: number): Promise<ObservationPage> {
+  return fetchJson(
+    `/api/v1/indicators/${encodeURIComponent(code)}/observations?page=${page}&page_size=100`,
+    INDICATOR_CACHE,
+  ).then((payload) =>
+    parseWith(observationPageSchema, payload, `indicators/${code}/observations`),
+  );
+}
+
+export async function getAllIndicatorObservations(code: string): Promise<Observation[]> {
+  const first = await getObservationPage(code, 1);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, first.pages - 1) }, (_, index) =>
+      getObservationPage(code, index + 2),
+    ),
+  );
+  return [first, ...rest].flatMap((page) => page.items);
+}
+
+export function indicatorCsvUrl(code: string): string {
+  return `${API_BASE}/api/v1/indicators/${encodeURIComponent(code)}/observations.csv`;
 }
 
 export const apiBase = API_BASE;

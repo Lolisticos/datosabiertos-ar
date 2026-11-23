@@ -14,12 +14,18 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from datosabiertos_connectors import CkanConnector, HttpPolicy, SourceConnector
+from datosabiertos_connectors import (
+    CkanConnector,
+    HttpPolicy,
+    SeriesApiConnector,
+    SourceConnector,
+)
 from sqlalchemy import select, update
 
 from .core.config import Settings, get_settings
 from .core.logging import configure_logging, get_logger
 from .db.session import dispose_engine, session_scope
+from .modules.indicators.service import StatisticalSeriesSyncService
 from .modules.ingestion.models import IngestionRun, IngestionRunStatus
 from .modules.ingestion.service import CatalogSyncService
 from .modules.ingestion.storage import LocalFileSystemStorage
@@ -150,6 +156,50 @@ def sync(
     typer.echo(json.dumps(result, indent=2, ensure_ascii=False))
     status = str(result["status"])
     raise typer.Exit(code=0 if status == "succeeded" else 1)
+
+
+@ingest_app.command("indicator")
+def sync_indicator(
+    code: Annotated[str, typer.Option(help="Configured indicator code")] = "emae-original-2004",
+    triggered_by: Annotated[str, typer.Option(help="Actor recorded on the run")] = "cli",
+) -> None:
+    """Synchronize one configured official statistical series."""
+    settings = _settings()
+
+    async def _run() -> dict[str, object]:
+        connector = SeriesApiConnector(
+            user_agent=settings.ingestion_user_agent,
+            policy=HttpPolicy(
+                timeout_seconds=settings.ingestion_request_timeout_seconds,
+                max_bytes=settings.ingestion_max_download_bytes,
+                requests_per_second=settings.ingestion_requests_per_second,
+                retry_attempts=settings.ingestion_retry_attempts,
+            ),
+        )
+        try:
+            async with session_scope() as session:
+                result = await StatisticalSeriesSyncService(
+                    session=session,
+                    connector=connector,
+                    storage=LocalFileSystemStorage(Path(settings.storage_root)),
+                    indicator_code=code,
+                    triggered_by=triggered_by,
+                ).run()
+                return {
+                    "run_id": str(result.run_id),
+                    "status": result.status.value,
+                    "records_read": result.records_read,
+                    "records_accepted": result.records_accepted,
+                    "records_rejected": result.records_rejected,
+                    "snapshot_id": str(result.snapshot_id) if result.snapshot_id else None,
+                }
+        finally:
+            await connector.aclose()
+            await dispose_engine()
+
+    result = asyncio.run(_run())
+    typer.echo(json.dumps(result, indent=2, ensure_ascii=False))
+    raise typer.Exit(code=0 if result["status"] == "succeeded" else 1)
 
 
 catalog_app = typer.Typer(help="Catalogue maintenance", no_args_is_help=True)

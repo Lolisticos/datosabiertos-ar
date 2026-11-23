@@ -22,6 +22,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ...db.base import Base, TimestampMixin, UuidPrimaryKeyMixin
@@ -59,6 +60,12 @@ class TransformationRun(UuidPrimaryKeyMixin, TimestampMixin, Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     records_in: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     records_out: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    records_rejected: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    rejection_details: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
     error_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     snapshot: Mapped[ResourceSnapshot] = relationship(back_populates="transformations")

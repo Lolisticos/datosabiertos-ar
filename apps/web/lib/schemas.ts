@@ -172,6 +172,12 @@ export const facetsSchema = z.object({
   organizations: z.array(facetSchema),
 });
 
+export const organizationSchema = referencedOrganizationSchema.extend({
+  jurisdiction_id: nullableString,
+  dataset_count: z.number(),
+  available_dataset_count: z.number(),
+});
+
 export const datasetFiltersSchema = z.object({
   topics: z.array(z.string()),
   formats: z.array(z.string()),
@@ -188,6 +194,58 @@ export const visualizationSchema = z.object({
 export const datasetPageSchema = pageSchema(datasetListItemSchema);
 export const runPageSchema = pageSchema(runSchema);
 export const changePageSchema = pageSchema(changeListItemSchema);
+export const organizationPageSchema = pageSchema(organizationSchema);
+
+export const indicatorSummarySchema = z.object({
+  code: z.string(),
+  name: z.string(),
+  description: nullableString,
+  unit: z.string(),
+  frequency: nullableString,
+  topic: nullableString,
+  source: referencedSourceSchema.nullable(),
+  latest_period: nullableString,
+  latest_value: nullableString,
+  last_updated_at: nullableString,
+});
+
+export const indicatorDetailSchema = indicatorSummarySchema.extend({
+  methodology: nullableString,
+  source_series_id: nullableString,
+  source_url: nullableString,
+  methodology_url: nullableString,
+  license: nullableString,
+  transformation_name: nullableString,
+  transformation_version: nullableString,
+  snapshot_id: nullableString,
+  raw_content_hash: nullableString,
+  normalized_hash: nullableString,
+  downloaded_at: nullableString,
+});
+
+export const observationSchema = z.object({
+  id: z.string(),
+  period_start: z.string(),
+  period_end: nullableString,
+  value: nullableString,
+  unit: z.string(),
+  dimensions: z.record(z.string(), z.unknown()),
+  jurisdiction_id: nullableString,
+  snapshot_id: nullableString,
+  published_at: nullableString,
+});
+
+export const indicatorCoverageSchema = z.object({
+  code: z.string(),
+  period: dateRangeSchema,
+  observation_count: z.number(),
+  missing_value_count: z.number(),
+  jurisdiction_count: z.number(),
+  frequency: nullableString,
+});
+
+export const indicatorPageSchema = pageSchema(indicatorSummarySchema);
+export const observationPageSchema = pageSchema(observationSchema);
 
 export type ReferencedSource = z.infer<typeof referencedSourceSchema>;
 export type ReferencedOrganization = z.infer<typeof referencedOrganizationSchema>;
@@ -207,3 +265,11 @@ export type Facet = z.infer<typeof facetSchema>;
 export type Facets = z.infer<typeof facetsSchema>;
 export type DatasetFilters = z.infer<typeof datasetFiltersSchema>;
 export type Visualization = z.infer<typeof visualizationSchema>;
+export type Organization = z.infer<typeof organizationSchema>;
+export type OrganizationPage = z.infer<typeof organizationPageSchema>;
+export type IndicatorSummary = z.infer<typeof indicatorSummarySchema>;
+export type IndicatorDetail = z.infer<typeof indicatorDetailSchema>;
+export type IndicatorPage = z.infer<typeof indicatorPageSchema>;
+export type IndicatorCoverage = z.infer<typeof indicatorCoverageSchema>;
+export type Observation = z.infer<typeof observationSchema>;
+export type ObservationPage = z.infer<typeof observationPageSchema>;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ApiFailure,
   getDatasetFilters,
+  getOrganizationOptions,
   searchDatasets,
   type DatasetSearchParams,
 } from "@/lib/api";
@@ -34,6 +35,7 @@ export default async function DatasetsPage({
   const source = first(raw.source) || undefined;
   const topic = first(raw.topic) || undefined;
   const format = first(raw.format) || undefined;
+  const organizationId = first(raw.organization_id) || undefined;
   const availableOnly = first(raw.available_only) !== "false";
   const page = positiveInt(first(raw.page), 1);
 
@@ -42,6 +44,7 @@ export default async function DatasetsPage({
     source,
     topic,
     format,
+    organization_id: organizationId,
     available_only: availableOnly,
     page,
     page_size: 20,
@@ -49,9 +52,11 @@ export default async function DatasetsPage({
 
   let filters;
   let results;
+  let organizations;
   try {
-    [filters, results] = await Promise.all([
+    [filters, organizations, results] = await Promise.all([
       getDatasetFilters(),
+      getOrganizationOptions(),
       searchDatasets(params),
     ]);
   } catch (error) {
@@ -59,7 +64,7 @@ export default async function DatasetsPage({
     throw error;
   }
 
-  const activeFilters = [q, source, topic, format].filter(Boolean).length;
+  const activeFilters = [q, source, topic, format, organizationId].filter(Boolean).length;
 
   return (
     <div className="space-y-6">
@@ -80,8 +85,8 @@ export default async function DatasetsPage({
         className="rounded-lg border border-line bg-white p-4"
         role="search"
       >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="sm:col-span-2 lg:col-span-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="sm:col-span-2 lg:col-span-5">
             <label htmlFor="q" className="text-sm font-medium text-ink">
               Buscar por tema, territorio u organismo
             </label>
@@ -93,6 +98,25 @@ export default async function DatasetsPage({
               placeholder="Ej.: producción minera, educación, CABA…"
               className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-ink"
             />
+          </div>
+
+          <div>
+            <label htmlFor="organization_id" className="text-sm font-medium text-ink">
+              Organismo
+            </label>
+            <select
+              id="organization_id"
+              name="organization_id"
+              defaultValue={organizationId ?? ""}
+              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-ink"
+            >
+              <option value="">Todos los organismos</option>
+              {organizations.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -215,6 +239,7 @@ export default async function DatasetsPage({
           source,
           topic,
           format,
+          organization_id: organizationId,
           available_only: availableOnly ? undefined : "false",
         }}
       />

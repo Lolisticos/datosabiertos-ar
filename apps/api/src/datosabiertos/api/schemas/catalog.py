@@ -154,6 +154,29 @@ class DatasetCoverageOut(BaseModel):
     dataset_id: UUID
 
 
+class OrganizationOut(ReferencedOrganization):
+    jurisdiction_id: UUID | None = None
+    dataset_count: int = Field(ge=0)
+    available_dataset_count: int = Field(ge=0)
+
+
+class JurisdictionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    type: str
+    parent_id: UUID | None = None
+    official_code: str | None = None
+    organization_count: int = Field(ge=0)
+    dataset_count: int = Field(ge=0)
+
+
+class TopicOut(BaseModel):
+    name: str
+    dataset_count: int = Field(ge=0)
+
+
 __all__ = [
     "ChangeListItem",
     "ChangeOut",
@@ -161,10 +184,13 @@ __all__ = [
     "DatasetDetailOut",
     "DatasetFiltersOut",
     "DatasetListItem",
+    "JurisdictionOut",
+    "OrganizationOut",
     "ProvenanceOut",
     "QualityCheckOut",
     "ResourceOut",
     "RunOut",
     "SourceOut",
     "StatsOut",
+    "TopicOut",
 ]

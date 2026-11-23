@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import socket
 from typing import Any
 
 import httpx
@@ -99,9 +101,18 @@ async def test_non_json_payloads_are_rejected(make_client: Any) -> None:
         await make_client(handler).get_json("https://datos.gob.ar/api/3/action/package_search")
 
 
-async def test_dns_resolution_is_used_when_no_resolver_is_injected(make_client: Any) -> None:
+async def test_dns_resolution_is_used_when_no_resolver_is_injected(
+    make_client: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # A host that resolves to a private address must be blocked even when the
-    # caller did not inject a resolver. ``localhost`` always resolves locally.
+    # caller did not inject a resolver. Stub only the operating-system lookup so
+    # this test is deterministic in network-restricted CI sandboxes.
+    async def fake_getaddrinfo(*_args: object, **_kwargs: object) -> list[tuple[object, ...]]:
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("127.0.0.1", 443))
+        ]
+
+    monkeypatch.setattr(asyncio.BaseEventLoop, "getaddrinfo", fake_getaddrinfo)
     client = make_client(
         lambda _request: None,  # type: ignore[arg-type]
         allowed_hosts=("localhost",),

@@ -1,16 +1,24 @@
-// Footer states the freshness contract: figures come from the API at request
-// time and trace back to official sources.
+import Link from "next/link";
+
 export function SiteFooter() {
   return (
     <footer className="mt-12 border-t border-line bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-muted">
-        <p className="font-semibold text-ink">DatosAbiertos AR</p>
-        <p className="mt-1 max-w-3xl">
-          Plataforma de datos públicos de Argentina. Toda cifra publicada aquí
-          se obtiene de la API en el momento de la consulta y puede rastrearse
-          hasta el artefacto original descargado de la fuente oficial. Esta
-          fase expone metadatos de catálogo; no publica indicadores propios.
-        </p>
+      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-8 text-sm text-muted sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
+        <div>
+          <p className="font-semibold text-ink">DatosAbiertos AR</p>
+          <p className="mt-1 max-w-3xl">
+            Datos públicos oficiales con metodología, fecha de actualización y
+            trazabilidad hasta el recurso original. Las ausencias nunca se
+            presentan como cero.
+          </p>
+        </div>
+        <nav aria-label="Enlaces del pie">
+          <ul className="flex flex-wrap gap-x-4 gap-y-2">
+            <li><Link className="underline hover:text-accent-deep" href="/fuentes">Fuentes</Link></li>
+            <li><Link className="underline hover:text-accent-deep" href="/datasets">Catálogo</Link></li>
+            <li><Link className="underline hover:text-accent-deep" href="/acerca">Metodología</Link></li>
+          </ul>
+        </nav>
       </div>
     </footer>
   );
