@@ -1,0 +1,32 @@
+# --- Python workspace ---------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.uv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Node / Next.js ----------------------------------------------------------
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Local environment -------------------------------------------------------
+.env
+.env.local
+!.env.example
+
+# --- Runtime artifacts -------------------------------------------------------
+# RAW artifacts are written under the API working directory in native runs and
+# into a named volume inside Compose; never commit them.
+/data/
+/apps/api/data/
+playwright-report/
+test-results/
+*.log

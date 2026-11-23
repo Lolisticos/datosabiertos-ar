@@ -1,0 +1,2 @@
+# Kept so the Docker image build (`COPY /app/public`) always has a directory
+# to copy. Static assets live here; the favicon is app/icon.svg (App Router).

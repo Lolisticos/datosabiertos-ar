@@ -1,0 +1,30 @@
+{
+  "data": [
+    ["2025-01-01", 146.49668268147974],
+    ["2025-02-01", null],
+    ["2025-03-01", 150.61008581723874]
+  ],
+  "count": 3,
+  "meta": [
+    {"frequency": "month", "start_date": "2025-01-01", "end_date": "2025-03-01"},
+    {
+      "catalog": {"title": "Datos Programación Macroeconómica"},
+      "dataset": {
+        "title": "Estimador Mensual de Actividad Económica (EMAE). Base 2004",
+        "description": "Índice original Estimador Mensual de Actividad Económica. Índice (Base 2004)",
+        "issued": "2017-09-28",
+        "source": "Instituto Nacional de Estadística y Censos (INDEC)"
+      },
+      "distribution": {
+        "title": "EMAE. Índice Base 2004.Valores mensuales.",
+        "downloadURL": "https://infra.datos.gob.ar/catalog/sspm/dataset/143/distribution/143.3/download/emae-valores-anuales-indice-base-2004-mensual.csv"
+      },
+      "field": {
+        "description": "EMAE. Base 2004",
+        "id": "143.3_NO_PR_2004_A_21",
+        "units": "Índice 2004=100",
+        "representation_mode": "value"
+      }
+    }
+  ]
+}

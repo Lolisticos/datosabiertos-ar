@@ -1,0 +1,70 @@
+name: datosabiertos-ar
+
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    container_name: datosabiertos-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-datosabiertos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-datosabiertos}
+      POSTGRES_DB: ${POSTGRES_DB:-datosabiertos}
+      TZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-55437}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datosabiertos} -d ${POSTGRES_DB:-datosabiertos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: datosabiertos-api
+    environment:
+      DATOSABIERTOS_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-datosabiertos}:${POSTGRES_PASSWORD:-datosabiertos}@db:5432/${POSTGRES_DB:-datosabiertos}
+      DATOSABIERTOS_CORS_ORIGINS: ${DATOSABIERTOS_CORS_ORIGINS:-http://localhost:3100}
+      DATOSABIERTOS_ENVIRONMENT: ${DATOSABIERTOS_ENVIRONMENT:-development}
+      DATOSABIERTOS_LOG_LEVEL: ${DATOSABIERTOS_LOG_LEVEL:-INFO}
+      DATOSABIERTOS_STORAGE_ROOT: /data/storage
+      TZ: UTC
+    ports:
+      - "${API_PORT:-8008}:8000"
+    volumes:
+      - storage-data:/data/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        # Server Components fetch from inside the Compose network. `localhost`
+        # here would point back to the web container, not to the API.
+        DATOSABIERTOS_API_BASE_URL: http://api:8000
+    container_name: datosabiertos-web
+    environment:
+      DATOSABIERTOS_API_BASE_URL: http://api:8000
+    ports:
+      - "${WEB_PORT:-3100}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  db-data:
+  storage-data:
