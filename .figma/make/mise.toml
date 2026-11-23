@@ -1,0 +1,3 @@
+# Figma preview serves the Next.js frontend; backend tooling is not needed here.
+[tools]
+node = "22"
